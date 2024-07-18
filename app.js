@@ -7,7 +7,7 @@ const { error } = require('console');
 const jwt = require('jsonwebtoken');
 require('dotenv').config();
 
-let auth = function(req, res, next){
+/*let auth = function(req, res, next){
   const token = req.header('x-auth-token');
   console.log(`12. token: ${token}\n`);
   if(!token)
@@ -21,14 +21,15 @@ let auth = function(req, res, next){
   catch(e){
     res.status(400).json({Auth: 'Token invalido'});
   }
-}
+}*/
 const app = express();
 const port = 4000;
 
 app.use(bodyParser.json());
 
 //SERVICIO DE CARGA DE ARCHIVO EN SERVIDOR SFTP
-app.post('/uploadFile', auth, async (req, res) => {
+//app.post('/uploadFile', auth, async (req, res) => {
+app.post('/uploadFile', async (req, res) => {
 
   const fileName = req[`body`][`fileName`];
   const fileUrl = req[`body`][`fileUrl`];
@@ -183,8 +184,8 @@ app.post('/uploadFile', auth, async (req, res) => {
 });
 
 //SERVICIO DE BUSQUEDA DE ARCHIVOS EN SERVIDOR SFPT
-app.post('/searchFile', auth, async (req, res) => {
-
+//app.post('/searchFile', auth, async (req, res) => {
+app.post('/searchFile', async (req, res) => {
   const fileName = req[`body`][`fileName`];
   const host = req[`body`][`host`];
   const port = req[`body`][`port`];
@@ -372,8 +373,8 @@ app.post('/searchFile', auth, async (req, res) => {
 });
 
 //SERVICIO DE BUSQUEDA DE ARCHIVOS EN SERVIDOR SFPT
-app.post('/searchFiles', auth, async (req, res) => {
-
+app.post('/searchFiles', async (req, res) => {
+//app.post('/searchFiles', auth, async (req, res) => {
   const host = req[`body`][`host`];
   const port = req[`body`][`port`];
   const username = req[`body`][`username`];
@@ -519,8 +520,8 @@ app.post('/searchFiles', auth, async (req, res) => {
 });
 
 //SERVICIO DE BUSQUEDA DE ARCHIVOS EN SERVIDOR SFPT
-app.post('/deleteFile', auth, async (req, res) => {
-
+//app.post('/deleteFile', auth, async (req, res) => {
+app.post('/deleteFile', async (req, res) => {
   const fileName = req[`body`][`fileName`];
   const host = req[`body`][`host`];
   const port = req[`body`][`port`];
@@ -714,14 +715,15 @@ app.post('/deleteFile', auth, async (req, res) => {
 });
 
 //SERVICIO DESTINADO A PROBAR LA DISPONIBLIDAD DE LA APLICACION
-app.get("/", auth, (req, res) => {
-	res.json({
+//app.get("/", auth, (req, res) => {
+app.get("/", (req, res) => {
+    res.json({
 		Status: 'OK'
 	})
 }); 
 
 //SERVICIO DESTINADO A PROBAR LA DISPONIBLIDAD DE LA APLICACION
-app.get("/getJWT", (req, res) => {
+/*app.get("/getJWT", (req, res) => {
   const token = req.header('x-auth-token');
   console.log(`12. token: ${token}\n`);
   if(!token)
@@ -744,7 +746,7 @@ app.get("/getJWT", (req, res) => {
       error: true,
       Auth: 'Token invalido'});
   }
-}); 
+}); */
   
 //INICIAR SERVIDOR
 app.listen(port, () => {
