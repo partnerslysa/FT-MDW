@@ -7,7 +7,7 @@ const { error } = require('console');
 const jwt = require('jsonwebtoken');
 require('dotenv').config();
 const ftp = require('ftp');
-const fs = require('fs');
+const fs = require('fs').promises;
 
 /*let auth = function(req, res, next){
   const token = req.header('x-auth-token');
@@ -192,57 +192,53 @@ app.post('/uploadFile', async (req, res) => {
       password: password
     };
 
+    //Armado de rutas
+    const localPath = `ArchivosTXT/${fileName}`;
+    const remotePath = `${remotePath2}${fileName}`;
+    const remoteDir = `.${remotePath2}`;
+    console.log(`198. remotePath: ${remotePath}`);
+
     try {
-      await conn.connect(ftpConfig);
 
-      conn.on('ready', () => {
-        console.log(`204. Host: ${host} - Conexión FTP ready`);
+      if (!isEmpty(respuesta.data)) {
 
-        //Armado de rutas
-        const localPath = `ArchivosTXT/${fileName}`;
-        const remotePath = `.${remotePath2}${fileName}`;
-        console.log(`209. remotePath: ${remotePath}`);
-        //Se genera archivo TXT en carpeta del proyecto
-        require('fs').writeFileSync(localPath, respuesta.data, 'utf-8');
+        await saveFile(localPath, respuesta.data);
 
-        fs.readFile(localPath, (err, data) => {
-          if (err) throw err;
+        conn.connect(ftpConfig);
+        conn.on('ready', async () => {
+          try {
+            console.log(`204. Host: ${host} - Conexión FTP ready`);
+            //Se genera archivo TXT en carpeta del proyecto
+            await createRemoteDir(conn, remoteDir);
+            await uploadFile(conn, localPath, remotePath);
+            console.log(`212. Archivo ${localPath} subido como ${remotePath}`);
 
-          // Subir el archivo al servidor FTP
-          conn.put(data, remotePath, (err) => {
-            if (err) throw err;
+            serviceResponse.message = `Archivo cargado exitosamente: ${remotePath}`;
+            serviceResponse.error = false;
+            serviceResponse.fileName = fileName;
 
-            console.log(`Archivo ${localPath} subido como ${remotePath}`);
-            conn.end(); // Cerrar la conexión FTP
-          });
+            res.status(200).json(serviceResponse);
+          } catch (err) {
+            serviceResponse.message = `Error al subir el archivo: ${err.message}`;
+            console.error(serviceResponse.message);
+            res.status(500).json(serviceResponse);
+          } finally {
+            conn.end();
+          }
         });
 
-        serviceResponse.message = `238. Host: ${host} - Directorio : ${remotePath} - Nombre archivo: ${fileName} - Archivo cargado exitosamente`;
-        serviceResponse.error = false;
-        serviceResponse.fileName = fileName
-        console.log(serviceResponse.message);
-
-        res.status(200).json(serviceResponse);
-
-        //sftp.end();
-        conn.end();
-        return;
-      });
-
-      conn.on(`error`, (err) => {
-
-        serviceResponse.message = `271. Host: ${host} - Conexión SFTP error - servicio uploadFile : err: ${JSON.stringify(err)}`;
-        console.log(serviceResponse.message);
-        res.status(500).json(serviceResponse);
-
-        return;
-      });
+        conn.on(`error`, (err) => {
+          serviceResponse.message = `Error de conexión FTP: ${err.message}`;
+          console.error(serviceResponse.message);
+          res.status(500).json(serviceResponse);
+          conn.end();
+        });
+      }
     }
-    catch (connectError) {
-      serviceResponse.message = connectError.message;
-      serviceResponse.fileName = fileName;
+    catch (err) {
+      serviceResponse.message = `Error: ${err.message}`;
+      console.error(serviceResponse.message);
       res.status(500).json(serviceResponse);
-      return;
     }
   }
 
@@ -800,3 +796,50 @@ app.get("/", (req, res) => {
 app.listen(port, () => {
   console.log(`Servidor escuchando en http://localhost:${port}`);
 });
+
+// Funciones 
+
+async function saveFile(path, content) {
+  await fs.writeFile(path, content, 'utf-8');
+}
+
+async function uploadFile(conn, localPath, remotePath) {
+  return new Promise((resolve, reject) => {
+    conn.put(localPath, remotePath, (err) => {
+      if (err) reject(err);
+      resolve();
+    });
+  });
+}
+
+async function createRemoteDir(conn, remotePath) {
+  return new Promise((resolve, reject) => {
+    conn.mkdir(remotePath, true, (err) => {
+      if (err && err.code !== 550) { // 550 means the directory already exists
+        reject(err);
+      } else {
+        resolve();
+      }
+    });
+  });
+}
+
+let isEmpty = (value) => {
+
+    if (value === ``)
+        return true;
+
+    if (value === null)
+        return true;
+
+    if (value === undefined)
+        return true;
+
+    if (value === `undefined`)
+        return true;
+
+    if (value === `null`)
+        return true;
+
+    return false;
+}
