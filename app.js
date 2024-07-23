@@ -33,7 +33,7 @@ app.use(bodyParser.json());
 //app.post('/uploadFile', auth, async (req, res) => {
 app.post('/uploadFile', async (req, res) => {
 
-  const serviceResponse = { error: true, message: ``, fileName: null, fileContent: null };
+  const serviceResponse = { error: true, message: ``, fileName: null, body: null };
   const fileName = req[`body`][`fileName`];
   const fileUrl = req[`body`][`fileUrl`];
   const host = req[`body`][`host`];
@@ -44,7 +44,7 @@ app.post('/uploadFile', async (req, res) => {
   const type = req[`body`][`type`];
   const respuesta = await axios.get(fileUrl);
 
-  console.log(`24. fileName: ${fileName} - fileUrl: ${fileUrl} - host: ${host} - port: ${port} - username: ${username} - password: ${password} - remotePath: ${remotePath2}\n`);
+  console.log(`106. fileName: ${fileName} - fileUrl: ${fileUrl} - host: ${host} - port: ${port} - username: ${username} - password: ${password} - remotePath: ${remotePath2}\n`);
 
   if (type == `sftp`) {
     const sftpConfig = {
@@ -196,7 +196,7 @@ app.post('/uploadFile', async (req, res) => {
     const localPath = `ArchivosTXT/${fileName}`;
     const remotePath = `${remotePath2}${fileName}`;
     const remoteDir = `.${remotePath2}`;
-    console.log(`198. remotePath: ${remotePath}`);
+    console.log(`258. remotePath: ${remotePath}`);
 
     try {
 
@@ -207,17 +207,34 @@ app.post('/uploadFile', async (req, res) => {
         conn.connect(ftpConfig);
         conn.on('ready', async () => {
           try {
-            console.log(`204. Host: ${host} - Conexión FTP ready`);
-            //Se genera archivo TXT en carpeta del proyecto
-            await createRemoteDir(conn, remoteDir);
-            await uploadFile(conn, localPath, remotePath);
-            console.log(`212. Archivo ${localPath} subido como ${remotePath}`);
+            console.log(`269. Host: ${host} - Conexión FTP ready`);
 
-            serviceResponse.message = `Archivo cargado exitosamente: ${remotePath}`;
-            serviceResponse.error = false;
-            serviceResponse.fileName = fileName;
+            // Verifica la existencia de archivos antes de subir el archivo
+            const filesToCheck = [fileName]; // Puedes agregar más archivos aquí
+            const existenceCheck = await listFilesAndCheckExistence(conn, remoteDir, filesToCheck);
+            console.log(`274. Archivos verificados:`, existenceCheck);
 
-            res.status(200).json(serviceResponse);
+            if (existenceCheck[fileName]) {
+
+              //Se genera archivo TXT en carpeta del proyecto
+              await uploadFile(conn, localPath, remotePath);
+              console.log(`278. Archivo ${localPath} subido como ${remotePath}`);
+
+              serviceResponse.message = `Archivo cargado correctamente: ${remotePath}`;
+              serviceResponse.error = false;
+              serviceResponse.fileName = fileName;
+
+              res.status(200).json(serviceResponse);
+
+            }
+            else {
+
+              serviceResponse.message = `No se pudo cargar archivo`;
+              serviceResponse.fileName = fileName;
+              serviceResponse.body = existenceCheck;
+              res.status(500).json(serviceResponse);
+
+            }
           } catch (err) {
             serviceResponse.message = `Error al subir el archivo: ${err.message}`;
             console.error(serviceResponse.message);
@@ -241,8 +258,6 @@ app.post('/uploadFile', async (req, res) => {
       res.status(500).json(serviceResponse);
     }
   }
-
-
 });
 
 //SERVICIO DE BUSQUEDA DE ARCHIVOS EN SERVIDOR SFPT
@@ -780,13 +795,13 @@ app.get("/", (req, res) => {
     const JWT = jwt.sign("{}", token);
     console.log(`16. JWT: ${JWT}`);
     const decoded = jwt.verify(JWT, process.env.API_KEY); // Si el API_KEY coincide, devuelve el payload, sino tira un error.
-    res.status(200).json({   
+    res.status(200).json({
       error: false,
       JWT: JWT
     });
   }
   catch(e){
-    res.status(400).json({    
+    res.status(400).json({
       error: true,
       Auth: 'Token invalido'});
   }
@@ -797,7 +812,29 @@ app.listen(port, () => {
   console.log(`Servidor escuchando en http://localhost:${port}`);
 });
 
-// Funciones 
+// Funciones
+
+async function listFilesAndCheckExistence(conn, remotePath, filesToCheck) {
+  return new Promise((resolve, reject) => {
+    conn.list(remotePath, (err, list) => {
+      if (err) {
+        return reject(err);
+      }
+      console.log("Estructura de carpetas en", remotePath, ":", list);
+      const fileExists = filesToCheck.map(file => {
+        return list.some(item => item.name === file);
+      });
+      const result = filesToCheck.reduce((acc, file, index) => {
+        acc[file] = fileExists[index];
+        return acc;
+      }, {});
+
+      let response = { filesChecked: result, directoryStructure: list }
+
+      resolve(response);
+    });
+  });
+}
 
 async function saveFile(path, content) {
   await fs.writeFile(path, content, 'utf-8');
@@ -812,34 +849,22 @@ async function uploadFile(conn, localPath, remotePath) {
   });
 }
 
-async function createRemoteDir(conn, remotePath) {
-  return new Promise((resolve, reject) => {
-    conn.mkdir(remotePath, true, (err) => {
-      if (err && err.code !== 550) { // 550 means the directory already exists
-        reject(err);
-      } else {
-        resolve();
-      }
-    });
-  });
-}
-
 let isEmpty = (value) => {
 
-    if (value === ``)
-        return true;
+  if (value === ``)
+    return true;
 
-    if (value === null)
-        return true;
+  if (value === null)
+    return true;
 
-    if (value === undefined)
-        return true;
+  if (value === undefined)
+    return true;
 
-    if (value === `undefined`)
-        return true;
+  if (value === `undefined`)
+    return true;
 
-    if (value === `null`)
-        return true;
+  if (value === `null`)
+    return true;
 
-    return false;
+  return false;
 }
