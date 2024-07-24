@@ -214,7 +214,7 @@ app.post('/uploadFile', async (req, res) => {
             const existenceCheck = await listFilesAndCheckExistence(conn, remoteDir, filesToCheck);
             console.log(`274. Archivos verificados:`, existenceCheck);
 
-            if (existenceCheck[fileName]) {
+            if (!existenceCheck[fileName]) {
 
               //Se genera archivo TXT en carpeta del proyecto
               await uploadFile(conn, localPath, remotePath);
@@ -229,7 +229,7 @@ app.post('/uploadFile', async (req, res) => {
             }
             else {
 
-              serviceResponse.message = `No se pudo cargar archivo`;
+              serviceResponse.message = `No se pudo cargar archivo porque ya existe un archivo con ese nombre`;
               serviceResponse.fileName = fileName;
               serviceResponse.body = existenceCheck;
               res.status(500).json(serviceResponse);
