@@ -42,8 +42,17 @@ app.post('/uploadFile', async (req, res) => {
   const password = req[`body`][`password`];
   const remotePath2 = req[`body`][`remotePath`];
   const type = req[`body`][`type`];
-  const respuesta = await axios.get(fileUrl);
+  let respuesta = null;
 
+  try {
+    respuesta = await axios.get(fileUrl);
+  }
+  catch (e) {
+    serviceResponse.message = `No se pudo obtener archivo, URL invalida`;
+    serviceResponse.fileName = fileName;
+    console.error(serviceResponse.message);
+    res.status(500).json(serviceResponse);
+  }
   console.log(`106. fileName: ${fileName} - fileUrl: ${fileUrl} - host: ${host} - port: ${port} - username: ${username} - password: ${password} - remotePath: ${remotePath2}\n`);
 
   if (type == `sftp`) {
