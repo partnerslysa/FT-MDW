@@ -52,7 +52,9 @@ app.post('/uploadFile', async (req, res) => {
     serviceResponse.fileName = fileName;
     console.error(serviceResponse.message);
     res.status(500).json(serviceResponse);
+    conn.end();
   }
+
   console.log(`106. fileName: ${fileName} - fileUrl: ${fileUrl} - host: ${host} - port: ${port} - username: ${username} - password: ${password} - remotePath: ${remotePath2}\n`);
 
   if (type == `sftp`) {
