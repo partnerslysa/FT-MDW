@@ -33,7 +33,7 @@ app.use(bodyParser.json());
 //app.post('/uploadFile', auth, async (req, res) => {
 app.post('/uploadFile', async (req, res) => {
 
-  const serviceResponse = { error: true, message: ``, fileName: null, body: null };
+  const serviceResponse = { error: true, message: ``, fileName: null };
   const fileName = req[`body`][`fileName`];
   const fileUrl = req[`body`][`fileUrl`];
   const host = req[`body`][`host`];
@@ -210,33 +210,23 @@ app.post('/uploadFile', async (req, res) => {
             console.log(`269. Host: ${host} - Conexión FTP ready`);
 
             // Verifica la existencia de archivos antes de subir el archivo
-            const filesToCheck = [fileName]; // Puedes agregar más archivos aquí
-            const existenceCheck = await listFilesAndCheckExistence(conn, remoteDir, filesToCheck);
-            console.log(`274. Archivos verificados:`, existenceCheck);
+            //const filesToCheck = [fileName]; // Puedes agregar más archivos aquí
+            //const existenceCheck = await listFilesAndCheckExistence(conn, remoteDir, filesToCheck);
+            //console.log(`274. Archivos verificados:`, existenceCheck);
 
-            if (!existenceCheck[fileName]) {
+            //Se genera archivo TXT en carpeta del proyecto
+            await uploadFile(conn, localPath, remotePath);
+            console.log(`278. Archivo ${localPath} subido como ${remotePath}`);
 
-              //Se genera archivo TXT en carpeta del proyecto
-              await uploadFile(conn, localPath, remotePath);
-              console.log(`278. Archivo ${localPath} subido como ${remotePath}`);
+            serviceResponse.message = `Archivo cargado correctamente en directorio ${remotePath}`;
+            serviceResponse.error = false;
+            serviceResponse.fileName = fileName;
 
-              serviceResponse.message = `Archivo cargado correctamente: ${remotePath}`;
-              serviceResponse.error = false;
-              serviceResponse.fileName = fileName;
+            res.status(200).json(serviceResponse);
 
-              res.status(200).json(serviceResponse);
-
-            }
-            else {
-
-              serviceResponse.message = `No se pudo cargar archivo porque ya existe un archivo con ese nombre`;
-              serviceResponse.fileName = fileName;
-              serviceResponse.body = existenceCheck;
-              res.status(500).json(serviceResponse);
-
-            }
           } catch (err) {
             serviceResponse.message = `Error al subir el archivo: ${err.message}`;
+            serviceResponse.fileName = fileName;
             console.error(serviceResponse.message);
             res.status(500).json(serviceResponse);
           } finally {
